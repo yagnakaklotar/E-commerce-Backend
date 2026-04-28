@@ -2,6 +2,7 @@ const Cart = require("../model/cart.model");
 const Order = require("../model/order.model");
 const Product = require("../model/product.model");
 const User = require("../model/user.model");
+const sendEmail = require("../utils/sendEmail");
 
 async function ordercart(req, res) {
   try {
@@ -149,9 +150,46 @@ async function updateOrderStatus(req, res) {
   }
 }
 
+//email
+async function makePayment(req, res) {
+  try {
+
+    const order = await Order.findById(req.params.id).populate("user");
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    order.paymentStatus = "paid";
+    order.paymentMethod = "UPI";
+    order.status = "confirmed";
+
+    await order.save();
+
+    // EMAIL 
+    await sendEmail(
+      order.user.email,
+      "Payment Successful",
+      "Your order has been confirmed successfully."
+    );
+
+    return res.status(200).json({
+      message: "Payment successful",
+      order
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      message: "Server Error",
+      error: err.message
+    });
+  }
+}
+
 module.exports = { 
   ordercart, 
   getMyOrders, 
   getOrderById,
-  updateOrderStatus
+  updateOrderStatus,
+  makePayment
 };

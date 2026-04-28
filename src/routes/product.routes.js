@@ -6,25 +6,25 @@ const authMiddleware = require("../middleware/auth.middleware");
 const adminMiddleware = require("../middleware/admin.middleware");
 const upload = require("../middleware/upload");
 
-// ⬇️ ORDER IMPORTANT - UPLOAD PEHLE, CONTROLLER BAAD!
+// CREATE PRODUCT
 router.post(
-  "/create", 
-  authMiddleware, 
-  adminMiddleware, 
-  upload.array('images', 10),  // ← PEHLE!
-  productController.createProduct  // ← BAAD!
+  "/create",
+  authMiddleware,
+  adminMiddleware,
+  upload.array("images", 10),
+  productController.createProduct
 );
 
-// GET ALL PRODUCTS
+// GET ALL
 router.get("/", productController.getAllProducts);
 
-// GET SINGLE PRODUCT
+// GET SINGLE
 router.get("/:id", productController.getProductById);
 
-// UPDATE PRODUCT
+// UPDATE
 router.put("/:id", authMiddleware, adminMiddleware, productController.updateProduct);
 
-// DELETE PRODUCT
+// DELETE
 router.delete("/:id", authMiddleware, adminMiddleware, productController.deleteProduct);
 
 module.exports = router;

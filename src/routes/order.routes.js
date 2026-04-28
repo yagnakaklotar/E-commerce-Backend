@@ -13,6 +13,9 @@ router.get("/", auth, orderController.getMyOrders);
 // Get single order
 router.get("/:id", auth, orderController.getOrderById);
 
+// Payment route (ADD THIS ✔)
+router.put("/pay/:id", auth, orderController.makePayment);
+
 // Update order status (admin only)
 router.put("/:id/status", auth, adminMiddleware, orderController.updateOrderStatus);
 

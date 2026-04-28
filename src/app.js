@@ -1,24 +1,22 @@
 const express = require("express");
+const app = express();
 const cookieParser = require("cookie-parser");
 
-const userRouter = require("./routes/user.routes");
-const productRouter = require("./routes/product.routes");
-const cartRouter = require("./routes/cart.routes");
-const orderRouter = require("./routes/order.routes");
-
-const app = express();
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-app.use("/api/user", userRouter);
-app.use("/api/product", productRouter);
-app.use("/api/cart", cartRouter);
-app.use("/api/order", orderRouter);  // ← SINGULAR!
+require("dotenv").config();
 
-app.get("/", (req, res) => {
-  res.send("E-commerce API is running");
-});
+const userRoutes = require("./routes/user.routes");
+const productRoutes = require("./routes/product.routes");
+const orderRoutes = require("./routes/order.routes");
+const cartRoutes = require("./routes/cart.routes"); 
+
+app.use(express.json());
+
+// ROUTES
+app.use("/api/user", userRoutes);
+app.use("/api/product", productRoutes);
+app.use("/api/order", orderRoutes);
+app.use("/api/cart", cartRoutes); 
 
 module.exports = app;
