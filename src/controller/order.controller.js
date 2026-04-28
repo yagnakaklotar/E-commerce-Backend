@@ -1,15 +1,12 @@
 const Cart = require("../model/cart.model");
 const Order = require("../model/order.model");
 const Product = require("../model/product.model");
+const User = require("../model/user.model");
 
-
-// PLACE ORDER
 async function ordercart(req, res) {
   try {
-
-    const cart = await Cart.findOne({
-      user: req.user._id
-    }).populate("products.product");
+    const cart = await Cart.findOne({ user: req.user._id })
+      .populate("products.product");
 
     if (!cart || cart.products.length === 0) {
       return res.status(400).json({
@@ -17,74 +14,56 @@ async function ordercart(req, res) {
       });
     }
 
-    // Stock Check + Reduce
+    // Stock check
     for (let item of cart.products) {
-
-      const product = await Product.findById(item.product._id);
-
-      if (!product) {
-        return res.status(404).json({
-          message: "Product not found"
-        });
-      }
-
+      const product = item.product;
+      
       if (product.stock < item.quantity) {
         return res.status(400).json({
-          message: `Not enough stock for ${product.name}`
+          message: `Sorry! ${product.name} - Only ${product.stock} available, you ordered ${item.quantity}`
         });
       }
-
-      product.stock -= item.quantity;
-
-      await product.save();
     }
 
-
-    // Total Calculate
     let total = 0;
-
     cart.products.forEach(item => {
       total += item.product.price * item.quantity;
     });
 
-
-    // Create Order
     const order = await Order.create({
       user: req.user._id,
       products: cart.products,
       totalAmount: total
     });
 
+    // Stock reduce
+    for (let item of cart.products) {
+      await Product.findByIdAndUpdate(
+        item.product._id,
+        { $inc: { stock: -item.quantity } }
+      );
+    }
 
-    // Clear Cart
     cart.products = [];
     await cart.save();
 
     return res.status(201).json({
-      message: "Order placed successfully",
+      message: "Order placed successfully! Stock updated!",
       order
     });
 
   } catch (err) {
-
     return res.status(500).json({
       message: "Server Error",
       error: err.message
     });
-
   }
 }
 
-
-
-// GET MY ORDERS
 async function getMyOrders(req, res) {
-
   try {
-
-    const orders = await Order.find({
-      user: req.user._id
-    }).populate("products.product");
+    const orders = await Order.find({ user: req.user._id })
+      .populate("products.product");
 
     return res.status(200).json({
       message: "Orders fetched successfully",
@@ -93,23 +72,15 @@ async function getMyOrders(req, res) {
     });
 
   } catch (err) {
-
     return res.status(500).json({
       message: "Server Error",
       error: err.message
     });
-
   }
-
 }
 
-
-
-// GET SINGLE ORDER
 async function getOrderById(req, res) {
-
   try {
-
     const order = await Order.findById(req.params.id)
       .populate("products.product")
       .populate("user", "name email");
@@ -120,9 +91,9 @@ async function getOrderById(req, res) {
       });
     }
 
-    if (order.user._id.toString() !== req.user._id.toString()) {
+    if (order.user._id.toString() !== req.user._id) {
       return res.status(401).json({
-        message: "Not authorized"
+        message: "Not authorized to view this order"
       });
     }
 
@@ -132,36 +103,38 @@ async function getOrderById(req, res) {
     });
 
   } catch (err) {
-
     return res.status(500).json({
       message: "Server Error",
       error: err.message
     });
-
   }
-
 }
 
-
-
-// UPDATE ORDER STATUS
 async function updateOrderStatus(req, res) {
-
   try {
-
+    const { id } = req.params;
     const { status } = req.body;
 
-    const order = await Order.findById(req.params.id);
-
-    if (!order) {
-      return res.status(404).json({
-        message: "Order not found"
+    const validStatuses = ["pending", "confirmed", "shipped", "delivered"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        message: "Invalid status"
       });
     }
 
-    order.status = status;
-
-    await order.save();
+    const order = await Order.findByIdAndUpdate(
+      id,
+      { 
+        status,
+        $push: {
+          statusUpdates: {
+            status,
+            updatedAt: new Date()
+          }
+        }
+      },
+      { new: true }
+    );
 
     return res.status(200).json({
       message: "Order status updated",
@@ -169,59 +142,16 @@ async function updateOrderStatus(req, res) {
     });
 
   } catch (err) {
-
     return res.status(500).json({
       message: "Server Error",
       error: err.message
     });
-
   }
-
 }
 
-
-
-// PAYMENT MOCK
-async function makePayment(req, res) {
-
-  try {
-
-    const order = await Order.findById(req.params.id);
-
-    if (!order) {
-      return res.status(404).json({
-        message: "Order not found"
-      });
-    }
-
-    order.paymentStatus = "paid";
-    order.paymentMethod = "UPI";
-
-
-    await order.save();
-
-    return res.status(200).json({
-      message: "Payment successful",
-      order
-    });
-
-  } catch (err) {
-
-    return res.status(500).json({
-      message: "Server Error",
-      error: err.message
-    });
-
-  }
-
-}
-
-
-
-module.exports = {
-  ordercart,
-  getMyOrders,
+module.exports = { 
+  ordercart, 
+  getMyOrders, 
   getOrderById,
-  updateOrderStatus,
-  makePayment
+  updateOrderStatus
 };

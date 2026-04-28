@@ -8,16 +8,14 @@ const orderRouter = require("./routes/order.routes");
 
 const app = express();
 
-// ⬇️ YE 2 LINES ADD KARO (Important!)
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));  // ← YE ADD KARO!
-
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.use("/api/user", userRouter);
 app.use("/api/product", productRouter);
 app.use("/api/cart", cartRouter);
-app.use("/api/order", orderRouter);
+app.use("/api/order", orderRouter);  // ← SINGULAR!
 
 app.get("/", (req, res) => {
   res.send("E-commerce API is running");

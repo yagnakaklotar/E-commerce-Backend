@@ -1,8 +1,35 @@
 const Cart = require("../model/cart.model");
+const Product = require("../model/product.model");
 
 async function addtocart(req, res) {
   try {
     const { productId, quantity } = req.body;
+
+    if (!productId || !quantity) {
+      return res.status(400).json({
+        message: "Product ID and quantity required"
+      });
+    }
+
+    if (quantity < 1) {
+      return res.status(400).json({
+        message: "Quantity must be at least 1"
+      });
+    }
+
+    const product = await Product.findById(productId);
+    
+    if (!product) {
+      return res.status(404).json({
+        message: "Product not found"
+      });
+    }
+
+    if (product.stock < quantity) {
+      return res.status(400).json({
+        message: `Sorry! ${product.name} - Only ${product.stock} available, you ordered ${quantity}`
+      });
+    }
 
     let cart = await Cart.findOne({ user: req.user._id });
 
@@ -32,6 +59,7 @@ async function addtocart(req, res) {
       message: "Added to cart",
       cart
     });
+
   } catch (err) {
     return res.status(500).json({
       message: "Server Error",
@@ -55,6 +83,7 @@ async function getCart(req, res) {
       message: "Cart fetched successfully",
       cart
     });
+
   } catch (err) {
     return res.status(500).json({
       message: "Server Error",
@@ -67,7 +96,20 @@ async function updateCartQuantity(req, res) {
   try {
     const { productId, quantity } = req.body;
 
-    let cart = await Cart.findOne({ user: req.user._id });
+    if (!productId) {
+      return res.status(400).json({
+        message: "Product ID required"
+      });
+    }
+
+    if (!quantity || quantity < 1) {
+      return res.status(400).json({
+        message: "Quantity must be at least 1"
+      });
+    }
+
+    let cart = await Cart.findOne({ user: req.user._id })
+      .populate("products.product");
 
     if (!cart) {
       return res.status(404).json({
@@ -76,7 +118,7 @@ async function updateCartQuantity(req, res) {
     }
 
     const productIndex = cart.products.findIndex(
-      p => p.product.toString() === productId
+      p => p.product._id.toString() === productId
     );
 
     if (productIndex === -1) {
@@ -85,18 +127,20 @@ async function updateCartQuantity(req, res) {
       });
     }
 
-    if (quantity <= 0) {
-      cart.products.splice(productIndex, 1);
-    } else {
-      cart.products[productIndex].quantity = quantity;
+    if (cart.products[productIndex].product.stock < quantity) {
+      return res.status(400).json({
+        message: `Only ${cart.products[productIndex].product.stock} items available`
+      });
     }
 
+    cart.products[productIndex].quantity = quantity;
     await cart.save();
 
     return res.status(200).json({
       message: "Cart updated successfully",
       cart
     });
+
   } catch (err) {
     return res.status(500).json({
       message: "Server Error",
@@ -127,6 +171,7 @@ async function removeFromCart(req, res) {
       message: "Product removed from cart",
       cart
     });
+
   } catch (err) {
     return res.status(500).json({
       message: "Server Error",
@@ -152,6 +197,7 @@ async function clearCart(req, res) {
       message: "Cart cleared successfully",
       cart
     });
+
   } catch (err) {
     return res.status(500).json({
       message: "Server Error",
